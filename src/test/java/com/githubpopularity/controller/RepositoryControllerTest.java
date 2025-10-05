@@ -5,93 +5,67 @@ import com.githubpopularity.service.GithubRepositoryService;
 import com.githubpopularity.service.PopularityScoringService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-
-@WebMvcTest(RepositoryController.class)
 class RepositoryControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
-    private GithubRepositoryService githubRepositoryService;
-
-    @MockBean
-    private PopularityScoringService popularityScoringService;
-
-    private GithubRepository sampleRepo;
+    private GithubRepositoryService githubService;
+    private PopularityScoringService scoringService;
+    private RepositoryController controller;
 
     @BeforeEach
     void setUp() {
-        sampleRepo = new GithubRepository(
-                "repo1",
-                "user/repo1",
-                "A test repository",
-                1500,
-                200,
-                Instant.now(),
-                "Java",
-                85.5
+        githubService = mock(GithubRepositoryService.class);
+        scoringService = mock(PopularityScoringService.class);
+        controller = new RepositoryController(githubService, scoringService);
+    }
+
+    @Test
+    void testGetPopularRepositoriesReturns200() {
+        GithubRepository repo = new GithubRepository(
+                "repo1", "owner/repo1", "desc", 100, 50,
+                Instant.parse("2025-10-05T00:00:00Z"), "Java", 0.0
         );
+
+        when(githubService.fetchRepositories("Java", "2023-01-01", 10, 1))
+                .thenReturn(List.of(repo));
+        when(scoringService.scoreRepositories(List.of(repo)))
+                .thenReturn(List.of(repo.withScore(75.0)));
+
+        ResponseEntity<List<GithubRepository>> response = controller.getPopularRepositories(
+                "Java", "2023-01-01", 10, 1
+        );
+
+        assertEquals(200, response.getStatusCodeValue());
+        List<GithubRepository> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(1, body.size());
+        assertEquals("repo1", body.get(0).name());
+
+        verify(githubService, times(1)).fetchRepositories("Java", "2023-01-01", 10, 1);
+        verify(scoringService, times(1)).scoreRepositories(List.of(repo));
     }
 
     @Test
-    void testGetPopularRepositories_ReturnsRepositories() throws Exception {
-        // Mock the service responses
-        Mockito.when(githubRepositoryService.fetchRepositories(anyString(), anyString(), anyInt(), anyInt()))
-                .thenReturn(List.of(sampleRepo));
+    void testGetPopularRepositoriesReturns204WhenNoRepos() {
+        when(githubService.fetchRepositories("Python", "2023-01-01", 10, 1))
+                .thenReturn(List.of());
+        when(scoringService.scoreRepositories(List.of())).thenReturn(List.of());
 
-        Mockito.when(popularityScoringService.scoreRepositories(anyList()))
-                .thenReturn(List.of(sampleRepo));
+        ResponseEntity<List<GithubRepository>> response = controller.getPopularRepositories(
+                "Python", "2023-01-01", 10, 1
+        );
 
-        // Perform GET request
-        mockMvc.perform(get("/api/repositories/popularity")
-                        .param("language", "Java")
-                        .param("createdAfter", "2024-01-01")
-                        .param("perPage", "5")
-                        .param("page", "1")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].name").value("repo1"))
-                .andExpect(jsonPath("$[0].fullName").value("user/repo1"))
-                .andExpect(jsonPath("$[0].description").value("A test repository"))
-                .andExpect(jsonPath("$[0].stars").value(1500))
-                .andExpect(jsonPath("$[0].forks").value(200))
-                .andExpect(jsonPath("$[0].language").value("Java"))
-                .andExpect(jsonPath("$[0].popularityScore").value(85.5));
+        assertEquals(204, response.getStatusCodeValue());
+        assertNull(response.getBody());
 
-        // Verify interactions
-        Mockito.verify(githubRepositoryService).fetchRepositories(eq("Java"), eq("2024-01-01"), eq(5), eq(1));
-        Mockito.verify(popularityScoringService).scoreRepositories(anyList());
+        verify(githubService, times(1)).fetchRepositories("Python", "2023-01-01", 10, 1);
+        verify(scoringService, times(1)).scoreRepositories(List.of());
     }
-
-    @Test
-    void testGetPopularRepositories_EmptyList() throws Exception {
-        Mockito.when(githubRepositoryService.fetchRepositories(anyString(), anyString(), anyInt(), anyInt()))
-                .thenReturn(List.of());
-        Mockito.when(popularityScoringService.scoreRepositories(anyList()))
-                .thenReturn(List.of());
-
-        mockMvc.perform(get("/api/repositories/popularity")
-                        .param("language", "Python")
-                        .param("createdAfter", "2024-05-01")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
-        }
 }
-

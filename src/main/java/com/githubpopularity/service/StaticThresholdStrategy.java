@@ -12,12 +12,20 @@ public class StaticThresholdStrategy implements PopularityScoringStrategy {
 
     @Override
     public GithubRepository calculateScore(GithubRepository repo) {
-        double starsScore = Math.min(1.0, (double) repo.stars() / MAX_STARS);
-        double forksScore = Math.min(1.0, (double) repo.forks() / MAX_FORKS);
-        double recencyScore = Math.exp(-Duration.between(repo.lastUpdated(), Instant.now()).toDays() / (double) RECENCY_DECAY_DAYS);
+        double starsScore = calculateNormalizedScore(repo.stars(), MAX_STARS);
+        double forksScore = calculateNormalizedScore(repo.forks(), MAX_FORKS);
+        double recencyScore = calculateRecencyScore(repo.lastUpdated());
 
         double score = (starsScore * 0.6 + forksScore * 0.3 + recencyScore * 0.1) * 100;
-
         return repo.withScore(score);
+    }
+
+    private double calculateNormalizedScore(int value, int max) {
+        return Math.min(1.0, (double) value / max);
+    }
+
+    private double calculateRecencyScore(Instant lastUpdated) {
+        long daysSinceUpdate = Duration.between(lastUpdated, Instant.now()).toDays();
+        return Math.exp(-daysSinceUpdate / (double) RECENCY_DECAY_DAYS);
     }
 }
