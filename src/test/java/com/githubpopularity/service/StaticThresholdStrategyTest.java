@@ -15,7 +15,7 @@ class StaticThresholdStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new StaticThresholdStrategy();
+        strategy = new StaticThresholdStrategy(50000, 10000, 3);
     }
 
     @Test

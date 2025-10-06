@@ -1,62 +1,121 @@
-# github-repo-popularity
-Spring Boot backend that scores GitHub repositories by stars, forks, and recency, exposed via a REST API.
+# GitHub Repository Popularity Backend
 
-## Setup
+A Spring Boot backend service that fetches GitHub repositories, calculates their popularity based on stars, forks, and recency, and exposes this information via a REST API. Designed for clarity, scalability, and ease of extension.
+
+## Features
+- Fetches repositories from the GitHub public API.
+- Calculates a popularity score using a configurable strategy:
+  - Stars (weight 0.6)
+  - Forks (weight 0.3)
+  - Recency of last update (weight 0.1)
+- Supports filtering by programming language and creation date.
+- Supports pagination via `perPage` and `page` query parameters.
+- Comprehensive error handling and validation.
+- Fully extensible for caching, custom scoring strategies, and parallel API calls.
+- Integrated logging for monitoring and debugging.
+
+## Getting Started
+
+### Prerequisites
+- Java 17+
+- Maven 3.8+
+- Internet access for GitHub API
+
+### Setup
 
 1. **Clone the repository**
+   ```sh
+   git clone https://github.com/jayanag/github-repo-popularity.git
+   cd github-popularity
+   ```
+
 2. **Configure application properties**
-   - Edit `src/main/resources/application.properties` to set the GitHub API base URL and default page size if needed.
+   Edit `src/main/resources/application.properties`:
+   ```properties
+   # GitHub API
+   github.api.base-url=https://api.github.com
+
+   # Popularity scoring
+   popularity.static.max-stars=50000
+   popularity.static.max-forks=10000
+   popularity.static.recency-decay-days=3
+   ```
+
 3. **Build and run**
    - Using Maven Wrapper:
-     ```
+     ```sh
      ./mvnw spring-boot:run
      ```
-   - Or build a jar:
-     ```
+   - Or build a JAR:
+     ```sh
      ./mvnw clean package
      java -jar target/github-popularity-0.0.1-SNAPSHOT.jar
      ```
 
-## Configuration
-
-In `src/main/resources/application.properties`:
-```
-github.api.base-url=https://api.github.com
-github.api.default-per-page=10
-```
-
 ## API Usage
 
-### Get Popular Repositories
-
+### Get Popularity scores
 ```
-GET /api/repositories/popularity?language={language}&createdAfter={YYYY-MM-DD}&page={page}&perPage={perPage}
-```
-
-- `language` (required): Programming language (e.g., Java)
-- `createdAfter` (required): Earliest creation date (format: YYYY-MM-DD)
-- `page` (optional, default: 1): Page number
-- `perPage` (optional, default: 10): Results per page
-
-**Example:**
-```
-curl "http://localhost:8080/api/repositories/popularity?language=Java&createdAfter=2023-01-01&page=1&perPage=5"
+GET /api/repositories/popularity
 ```
 
-### Response
-A JSON array of repositories, each with a calculated popularity score.
+#### Query Parameters
+| Parameter    | Required | Description                                 |
+|--------------|----------|---------------------------------------------|
+| language     | Yes      | Programming language (e.g., Java)           |
+| createdAfter | Yes      | Earliest creation date (YYYY-MM-DD)         |
+| perPage      | No       | Number of results per page (default: 10)    |
+| page         | No       | Page number (default: 1)                    |
+
+#### Example
+```sh
+curl "http://localhost:8080/api/repositories/popularity?language=Java&createdAfter=2023-01-01&perPage=5&page=1"
+```
+
+#### Response
+- **HTTP 200 OK**: JSON array of repositories and their popularity scores.
+- **HTTP 204 No Content**: No repositories found.
+- Errors are returned in JSON with proper status codes and messages.
 
 ## Error Handling
-- Returns `400 Bad Request` for invalid parameters (e.g., missing or malformed `language` or `createdAfter`).
-- Returns an empty list if the GitHub API is unavailable or rate-limited (errors are logged).
+| Status Code | Description                                      |
+|-------------|--------------------------------------------------|
+| 400         | Invalid request parameters (e.g., blank language or wrong date format) |
+| 403         | GitHub API rate limit exceeded                   |
+| 422         | GitHub API validation error                      |
+| 503         | GitHub API unavailable                           |
+| 500         | Internal server error                            |
+
+All errors return a structured JSON object with:
+- `timestamp`
+- `status`
+- `error`
+- `path`
+- `errors` (details)
+
+## Extensibility
+- **Popularity scoring strategy**: Can be replaced or extended. Current strategy uses fixed thresholds for stars, forks, and recency.
+- **Caching**: Can be added (e.g., Redis, Caffeine) to reduce API calls for repeated queries.
+- **Pagination**: Supports `perPage` and `page` parameters.
+- **Logging**: Logs repository fetches, mappings, and scoring details.
+
+## Trade-offs
+- Uses blocking WebClient calls for simplicity; can be made fully reactive for high concurrency.
+- No authentication by default — limited by GitHub public API rate limits. Tokens can be added for higher limits.
+- Static scoring weights; can be made configurable at runtime.
 
 ## Testing
+- Unit and integration tests included.
+- Run all tests with:
+  ```sh
+  ./mvnw test
+  ```
 
-To run all tests:
-```
-./mvnw test
-```
-
----
-
-For questions or contributions, please open an issue or pull request.
+## Future Enhancements
+- Add caching for frequent queries.
+- Parallelize/batch GitHub API requests for faster responses.
+- Support additional repository filters (e.g., stars, forks, topics).
+- Expose OpenAPI/Swagger documentation.
+- Make scoring weights configurable at runtime.
+- Add metrics and monitoring endpoints.
+- Containerize with Docker/Kubernetes for cloud deployment.
