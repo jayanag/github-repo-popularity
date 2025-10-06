@@ -1,6 +1,9 @@
 package com.githubpopularity.service;
 
+import com.githubpopularity.controller.RepositoryController;
 import com.githubpopularity.model.GithubRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

@@ -31,11 +31,13 @@ public class GithubRepositoryServiceImpl implements GithubRepositoryService {
                 .baseUrl(githubApiBaseUrl)
                 .exchangeStrategies(strategies)
                 .build();
+        logger.info("Initialized GithubRepositoryService with base URL: {}", githubApiBaseUrl);
     }
 
     @Override
     public List<GithubRepository> fetchRepositories(String language, String createdAfter, int perPage, int page) {
         String query = String.format("language:%s created:>%s", language, createdAfter);
+        logger.debug("Fetching GitHub repositories with query='{}', perPage={}, page={}", query, perPage, page);
         try {
             GithubSearchResponse response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -49,13 +51,22 @@ public class GithubRepositoryServiceImpl implements GithubRepositoryService {
                     .onErrorMap(WebClientResponseException.class, this::handleWebClientError)
                     .block();
 
-            return Optional.ofNullable(response)
-                    .map(r -> r.items)
-                    .orElse(Collections.emptyList())
-                    .stream()
+            if (response == null || response.items == null) {
+                logger.warn("GitHub API returned an empty response for query='{}'", query);
+                return Collections.emptyList();
+            }
+
+            logger.debug("GitHub API returned {} repositories for language='{}'", response.items.size(), language);
+
+            List<GithubRepository> repositories = response.items.stream()
                     .map(this::mapToRepository)
                     .collect(Collectors.toList());
+
+            logger.info("Mapped {} repositories into domain model", repositories.size());
+            return repositories;
         } catch (GithubApiException e) {
+            logger.error("GitHub API exception while fetching repos (language={}, createdAfter={}): {}",
+                    language, createdAfter, e.getMessage());
             throw e;
         } catch (Exception e) {
             logger.error("Unexpected error fetching repositories: {}", e.getMessage(), e);
@@ -72,7 +83,6 @@ public class GithubRepositoryServiceImpl implements GithubRepositoryService {
             case 503 -> "GitHub API service unavailable";
             default -> "GitHub API error";
         };
-        logger.error("{}: {}", message, e.getMessage());
         return new GithubApiException(statusCode, message);
     }
 

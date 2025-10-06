@@ -14,6 +14,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.springframework.http.HttpStatus;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         classes = GithubPopularityApplication.class)
@@ -71,7 +72,7 @@ class RepositoryControllerIntegrationTest {
                 GithubRepository[].class
         );
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         GithubRepository[] repos = response.getBody();
         assertEquals(1, repos.length);
         assertEquals("repo1", repos[0].name());
@@ -91,7 +92,7 @@ class RepositoryControllerIntegrationTest {
                 Void.class
         );
 
-        assertEquals(204, response.getStatusCodeValue());
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
@@ -107,7 +108,7 @@ class RepositoryControllerIntegrationTest {
                 String.class
         );
 
-        assertEquals(503, response.getStatusCodeValue());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         assertTrue(response.getBody().contains("GitHub API service unavailable"));
     }
 
@@ -118,8 +119,8 @@ class RepositoryControllerIntegrationTest {
                 String.class
         );
 
-        assertEquals(400, response.getStatusCodeValue());
-        assertTrue(response.getBody().contains("must not be blank"));
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody() != null && response.getBody().contains("must not be blank"));
     }
 
     @Test
@@ -135,8 +136,8 @@ class RepositoryControllerIntegrationTest {
                 String.class
         );
 
-        assertEquals(422, response.getStatusCodeValue());
-        assertTrue(response.getBody().contains("GitHub API validation error"));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        assertTrue(response.getBody() != null && response.getBody().contains("GitHub API validation error"));
     }
 
     @Test
@@ -152,8 +153,8 @@ class RepositoryControllerIntegrationTest {
                 String.class
         );
 
-        assertEquals(403, response.getStatusCodeValue());
-        assertTrue(response.getBody().contains("rate limit exceeded"));
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertTrue(response.getBody() != null && response.getBody().contains("rate limit exceeded"));
     }
 
     @Test
@@ -169,7 +170,7 @@ class RepositoryControllerIntegrationTest {
                 String.class
         );
 
-        assertEquals(500, response.getStatusCodeValue());
-        assertTrue(response.getBody().contains("GitHub API error"));
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertTrue(response.getBody() != null && response.getBody().contains("GitHub API error"));
     }
 }

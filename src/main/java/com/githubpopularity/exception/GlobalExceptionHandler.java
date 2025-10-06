@@ -6,6 +6,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,8 +16,11 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(GithubApiException.class)
     public ResponseEntity<ApiError> handleGithubApiException(GithubApiException ex, HttpServletRequest request) {
+        logger.error("GitHubApiException: status={}, message={}", ex.getStatusCode(), ex.getMessage());
         return ResponseEntity.status(ex.getStatusCode()).body(new ApiError(
                 ex.getStatusCode(),
                 "GitHub API Error",
@@ -25,6 +31,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        logger.warn("ConstraintViolationException: {}", ex.getMessage());
         Map<String, String> errors = ex.getConstraintViolations().stream()
                 .collect(Collectors.toMap(
                         v -> v.getPropertyPath().toString(),
@@ -36,6 +43,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 errors
         ));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleAllExceptions(Exception ex, HttpServletRequest request) {
+        logger.error("Unhandled exception: {}", ex.getMessage(), ex);
+        ApiError apiError = new ApiError(
+                500,
+                "Internal Server Error",
+                request.getRequestURI(),
+                Map.of("error", ex.getMessage())
+        );
+        return ResponseEntity.status(500).body(apiError);
     }
 
     public static class ApiError {

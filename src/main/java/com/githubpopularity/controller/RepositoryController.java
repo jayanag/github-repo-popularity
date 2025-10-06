@@ -47,6 +47,8 @@ public class RepositoryController {
         List<GithubRepository> repositories = githubService.fetchRepositories(language, createdAfter, perPage, page);
         List<GithubRepository> scored = scoringService.scoreRepositories(repositories);
 
+        logger.info("Repositories found: {}", scored.size());
+
         return scored.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(scored);
     }
 }
