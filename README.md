@@ -94,7 +94,7 @@ All errors return a structured JSON object with:
 - `errors` (details)
 
 ## Extensibility
-- **Popularity scoring strategy**: Can be replaced or extended. Current strategy uses fixed thresholds for stars, forks, and recency.
+- **Popularity scoring strategy**: Can be replaced or extended. 
 - **Caching**: Can be added (e.g., Redis, Caffeine) to reduce API calls for repeated queries.
 - **Pagination**: Supports `perPage` and `page` parameters.
 - **Logging**: Logs repository fetches, mappings, and scoring details.
@@ -115,7 +115,8 @@ All errors return a structured JSON object with:
 - Add caching for frequent queries.
 - Parallelize/batch GitHub API requests for faster responses.
 - Support additional repository filters (e.g., stars, forks, topics).
+- Implement rate limiting to handle GitHub API restrictions gracefully.
+- Add retry logic for transient failures to improve reliability.
 - Expose OpenAPI/Swagger documentation.
-- Make scoring weights configurable at runtime.
 - Add metrics and monitoring endpoints.
 - Containerize with Docker/Kubernetes for cloud deployment.
