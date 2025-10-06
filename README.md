@@ -25,7 +25,7 @@ A Spring Boot backend service that fetches GitHub repositories, calculates their
 1. **Clone the repository**
    ```sh
    git clone https://github.com/jayanag/github-repo-popularity.git
-   cd github-popularity
+   cd github-repo-popularity
    ```
 
 2. **Configure application properties**
