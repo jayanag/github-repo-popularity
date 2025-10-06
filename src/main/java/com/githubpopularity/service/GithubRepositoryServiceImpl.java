@@ -1,6 +1,7 @@
 package com.githubpopularity.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.githubpopularity.client.GithubApiClient;
 import com.githubpopularity.dto.GithubRepositoryItem;
 import com.githubpopularity.exception.GithubApiException;
 import com.githubpopularity.model.GithubRepository;
@@ -23,19 +24,10 @@ import java.util.stream.Collectors;
 @Service
 public class GithubRepositoryServiceImpl implements GithubRepositoryService {
     private static final Logger logger = LoggerFactory.getLogger(GithubRepositoryServiceImpl.class);
-    private final WebClient webClient;
+    private final GithubApiClient githubApiClient;
 
-    public GithubRepositoryServiceImpl(WebClient.Builder webClientBuilder,
-                                       @Value("${github.api.base-url}") String githubApiBaseUrl) {
-        // Increase buffer size to 2MB to handle large GitHub API responses
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
-                .build();
-        this.webClient = webClientBuilder
-                .baseUrl(githubApiBaseUrl)
-                .exchangeStrategies(strategies)
-                .build();
-        logger.info("Initialized GithubRepositoryService with base URL: {}", githubApiBaseUrl);
+    public GithubRepositoryServiceImpl(GithubApiClient githubApiClient) {
+        this.githubApiClient = githubApiClient;
     }
 
     /**
@@ -51,53 +43,20 @@ public class GithubRepositoryServiceImpl implements GithubRepositoryService {
     @Override
     public List<GithubRepository> fetchRepositories(String language, String createdAfter, int perPage, int page) {
         String query = String.format("language:%s created:>%s", language, createdAfter);
-        logger.debug("Fetching GitHub repositories with query='{}', perPage={}, page={}", query, perPage, page);
-        try {
-            GithubSearchResponse response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/search/repositories")
-                            .queryParam("q", query)
-                            .queryParam("per_page", perPage)
-                            .queryParam("page", page)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(GithubSearchResponse.class)
-                    .onErrorMap(WebClientResponseException.class, this::handleWebClientError)
-                    .block();
+        logger.debug("Fetching repositories with query='{}'", query);
 
-            if (response == null || response.items == null) {
-                logger.warn("GitHub API returned an empty response for query='{}'", query);
-                return Collections.emptyList();
-            }
+        List<GithubRepositoryItem> items = githubApiClient.fetchRepositories(query, perPage, page);
 
-            logger.debug("GitHub API returned {} repositories for language='{}'", response.items.size(), language);
-
-            List<GithubRepository> repositories = response.items.stream()
-                    .map(this::mapToRepository)
-                    .collect(Collectors.toList());
-
-            logger.info("Mapped {} repositories into domain model", repositories.size());
-            return repositories;
-        } catch (GithubApiException e) {
-            logger.error("GitHub API exception while fetching repos (language={}, createdAfter={}): {}",
-                    language, createdAfter, e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            logger.error("Unexpected error fetching repositories: {}", e.getMessage(), e);
-            throw new GithubApiException(500, "Unexpected error fetching repositories");
+        if (items.isEmpty()) {
+            logger.warn("No repositories returned from GitHub for query='{}'", query);
+            return List.of();
         }
-    }
 
-    private GithubApiException handleWebClientError(WebClientResponseException e) {
-        int statusCode = e.getStatusCode().value();
-        String message = switch (statusCode) {
-            case 304 -> "GitHub API returned 304 Not Modified";
-            case 403, 429 -> "GitHub API rate limit exceeded";
-            case 422 -> "GitHub API validation error";
-            case 503 -> "GitHub API service unavailable";
-            default -> "GitHub API error";
-        };
-        return new GithubApiException(statusCode, message);
+        logger.info("Mapping {} repositories into domain model", items.size());
+
+        return items.stream()
+                .map(this::mapToRepository)
+                .collect(Collectors.toList());
     }
 
     private GithubRepository mapToRepository(GithubRepositoryItem item) {

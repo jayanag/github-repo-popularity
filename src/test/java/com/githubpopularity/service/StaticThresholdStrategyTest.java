@@ -35,7 +35,7 @@ class StaticThresholdStrategyTest {
     }
 
     @Test
-    void testCalculateScore_NoStarsOrForks() {
+    void testCalculateScoreNoStarsOrForks() {
         GithubRepository repo = new GithubRepository(
                 "repo2", "owner/repo2", "test repo",
                 0, 0,
@@ -50,7 +50,7 @@ class StaticThresholdStrategyTest {
     }
 
     @Test
-    void testCalculateScore_PartialStarsAndForks() {
+    void testCalculateScorePartialStarsAndForks() {
         GithubRepository repo = new GithubRepository(
                 "repo3", "owner/repo3", "test repo",
                 25000, 5000, // half of max
@@ -65,7 +65,7 @@ class StaticThresholdStrategyTest {
     }
 
     @Test
-    void testCalculateScore_OldRepo_LowRecencyScore() {
+    void testCalculateScoreOldRepoLowRecencyScore() {
         GithubRepository repo = new GithubRepository(
                 "repo4", "owner/repo4", "test repo",
                 50000, 10000,

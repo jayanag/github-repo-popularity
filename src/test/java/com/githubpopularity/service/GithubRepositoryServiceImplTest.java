@@ -1,102 +1,73 @@
 package com.githubpopularity.service;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.githubpopularity.exception.GithubApiException;
+import com.githubpopularity.client.GithubApiClient;
+import com.githubpopularity.dto.GithubRepositoryItem;
 import com.githubpopularity.model.GithubRepository;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.Instant;
 import java.util.List;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class GithubRepositoryServiceImplTest {
 
-    private static WireMockServer wireMockServer;
-    private GithubRepositoryServiceImpl service;
-
-    @BeforeAll
-    static void startWireMock() {
-        wireMockServer = new WireMockServer(8089);
-        wireMockServer.start();
-        configureFor("localhost", 8089);
-    }
-
-    @AfterAll
-    static void stopWireMock() {
-        if (wireMockServer != null) {
-            wireMockServer.stop();
-        }
-    }
+    private GithubApiClient githubApiClient;
+    private GithubRepositoryServiceImpl repositoryService;
 
     @BeforeEach
-    void setup() {
-        WebClient.Builder builder = WebClient.builder();
-        service = new GithubRepositoryServiceImpl(builder, "http://localhost:8089");
+    void setUp() {
+        githubApiClient = mock(GithubApiClient.class);
+        repositoryService = new GithubRepositoryServiceImpl(githubApiClient);
     }
 
     @Test
-    void fetchRepositoriesReturnsList() {
-        stubFor(get(urlPathEqualTo("/search/repositories"))
-                .withQueryParam("q", containing("language:Java"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {
-                                  "items": [
-                                    {
-                                      "name": "repo1",
-                                      "full_name": "owner/repo1",
-                                      "description": "desc",
-                                      "stargazers_count": 100,
-                                      "forks_count": 50,
-                                      "updated_at": "2025-10-05T00:00:00Z",
-                                      "language": "Java"
-                                    }
-                                  ]
-                                }
-                                """)));
+    void fetchRepositoriesReturnsMappedRepositories() {
+        GithubRepositoryItem item = new GithubRepositoryItem(
+                "repo1",
+                "owner/repo1",
+                "A test repo",
+                100,
+                50,
+                Instant.parse("2025-10-05T00:00:00Z"),
+                "Java"
+        );
 
-        List<GithubRepository> repos = service.fetchRepositories("Java", "2023-01-01", 10, 1);
-        assertEquals(1, repos.size());
-        GithubRepository repo = repos.get(0);
-        assertEquals("repo1", repo.name());
-        assertEquals("owner/repo1", repo.fullName());
-        assertEquals("Java", repo.language());
-        assertEquals(100, repo.stars());
-        assertEquals(50, repo.forks());
-        assertEquals("desc", repo.description());
+        when(githubApiClient.fetchRepositories(anyString(), eq(10), eq(1)))
+                .thenReturn(List.of(item));
+
+        List<GithubRepository> result = repositoryService.fetchRepositories("Java", "2023-01-01", 10, 1);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("repo1", result.get(0).name());
+        assertEquals("owner/repo1", result.get(0).fullName());
+
+        verify(githubApiClient, times(1)).fetchRepositories(anyString(), eq(10), eq(1));
     }
 
     @Test
-    void fetchRepositories503throwsGithubApiException() {
-        stubFor(get(urlPathEqualTo("/search/repositories"))
-                .withQueryParam("q", containing("language:Go"))
-                .willReturn(aResponse()
-                        .withStatus(503)
-                        .withBody("Service Unavailable")));
+    void fetchRepositoriesEmptyListReturnsEmpty() {
+        when(githubApiClient.fetchRepositories(anyString(), anyInt(), anyInt()))
+                .thenReturn(List.of());
 
-        GithubApiException exception = assertThrows(GithubApiException.class, () ->
-                service.fetchRepositories("Go", "2023-01-01", 10, 1));
+        List<GithubRepository> result = repositoryService.fetchRepositories("Python", "2023-01-01", 5, 2);
 
-        assertEquals(503, exception.getStatusCode());
-        assertTrue(exception.getMessage().contains("service unavailable"));
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(githubApiClient, times(1)).fetchRepositories(anyString(), eq(5), eq(2));
     }
 
     @Test
-    void fetchRepositoriesEmptyResponseReturnsEmptyList() {
-        stubFor(get(urlPathEqualTo("/search/repositories"))
-                .withQueryParam("q", containing("language:Python"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("{ \"items\": [] }")));
+    void fetchRepositoriesClientThrowsException() {
+        when(githubApiClient.fetchRepositories(anyString(), anyInt(), anyInt()))
+                .thenThrow(new RuntimeException("API error"));
 
-        List<GithubRepository> repos = service.fetchRepositories("Python", "2023-01-01", 10, 1);
-        assertTrue(repos.isEmpty());
+        assertThrows(RuntimeException.class,
+                () -> repositoryService.fetchRepositories("Go", "2023-01-01", 5, 1));
+
+        verify(githubApiClient, times(1)).fetchRepositories(anyString(), eq(5), eq(1));
     }
 }
