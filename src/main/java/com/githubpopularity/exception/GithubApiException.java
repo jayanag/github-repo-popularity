@@ -1,5 +1,9 @@
 package com.githubpopularity.exception;
 
+/**
+ * Custom runtime exception to represent errors returned from the GitHub API.
+ * Encapsulates the HTTP status code and the error message.
+ */
 public class GithubApiException extends RuntimeException {
     private final int statusCode;
 

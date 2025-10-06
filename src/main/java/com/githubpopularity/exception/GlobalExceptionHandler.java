@@ -13,6 +13,10 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Global exception handler for the application.
+ * Handles API-specific exceptions, validation errors, and generic exceptions.
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
