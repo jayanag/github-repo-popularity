@@ -3,11 +3,10 @@
 A Spring Boot backend service that fetches GitHub repositories, calculates their popularity based on stars, forks, and recency, and exposes this information via a REST API. Designed for clarity, scalability, and ease of extension.
 
 ## Features
-- Fetches repositories from the GitHub public API.
-- Calculates a popularity score using a configurable strategy:
-  - Stars (weight 0.6)
-  - Forks (weight 0.3)
-  - Recency of last update (weight 0.1)
+- Fetches repositories from the GitHub public API and calculates a popularity score based on:
+  - Stars (weight: 60%)
+  - Forks (weight: 30%)
+  - Recency of last update (weight: 10%)
 - Supports filtering by programming language and creation date.
 - Supports pagination via `perPage` and `page` query parameters.
 - Comprehensive error handling and validation.
@@ -35,7 +34,7 @@ A Spring Boot backend service that fetches GitHub repositories, calculates their
    # GitHub API
    github.api.base-url=https://api.github.com
 
-   # Popularity scoring
+   # Threshold values for popularity scoring
    popularity.static.max-stars=50000
    popularity.static.max-forks=10000
    popularity.static.recency-decay-days=3
@@ -102,7 +101,6 @@ All errors return a structured JSON object with:
 ## Trade-offs
 - Uses blocking WebClient calls for simplicity; can be made fully reactive for high concurrency.
 - No authentication by default — limited by GitHub public API rate limits. Tokens can be added for higher limits.
-- Static scoring weights; can be made configurable at runtime.
 
 ## Testing
 - Unit and integration tests included.
