@@ -14,9 +14,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
-
 import java.util.List;
 
+/**
+ * REST controller for fetching and scoring GitHub repositories.
+ * Provides an endpoint to retrieve popular repositories based on language,
+ * creation date, and paging parameters.
+ */
 @RestController
 @RequestMapping("/api/repositories")
 @Validated
@@ -31,6 +35,16 @@ public class RepositoryController {
         this.scoringService = scoringService;
     }
 
+    /**
+     * Fetches repositories from GitHub, scores them using the popularity strategy,
+     * and returns the results.
+     *
+     * @param language      programming language filter (required)
+     * @param createdAfter  fetch repositories created after this date (YYYY-MM-DD, required)
+     * @param perPage       number of results per page (default: 10)
+     * @param page          page number (default: 1)
+     * @return ResponseEntity containing the list of scored repositories or no content if empty
+     */
     @GetMapping("/popularity")
     public ResponseEntity<List<GithubRepository>> getPopularRepositories(
             @RequestParam @NotBlank String language,

@@ -1,13 +1,17 @@
 package com.githubpopularity.service;
 
 import com.githubpopularity.model.GithubRepository;
-
 import java.time.Duration;
 import java.time.Instant;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Popularity scoring strategy based on static thresholds.
+ * <p>
+ * Calculates a popularity score for a GitHub repository using stars, forks, and recency.
+ * Stars and forks are normalized against configurable maximums, and recency decays exponentially.
+ */
 public class StaticThresholdStrategy implements PopularityScoringStrategy {
     private static final Logger logger = LoggerFactory.getLogger(StaticThresholdStrategy.class);
 
@@ -21,6 +25,12 @@ public class StaticThresholdStrategy implements PopularityScoringStrategy {
         this.recencyDecayDays = recencyDecayDays;
     }
 
+    /**
+     * Calculates the popularity score for a single repository.
+     *
+     * @param repo the repository to score
+     * @return repository with updated popularity score
+     */
     @Override
     public GithubRepository calculateScore(GithubRepository repo) {
         logger.debug("Calculating popularity score for repository: {}", repo.fullName());
